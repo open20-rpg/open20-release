@@ -12,9 +12,14 @@ Ver el [README](README.md) para qué hace cada una y cómo se usan.
 - `src/release-config.mjs`: la configuración de semantic-release (reglas de
   versión, plugins). `src/release-notes.mjs`: las notas.
   `src/discord.mjs`: el anuncio, las reacciones y la edición final.
+  `src/banner.mjs`: la imagen del anuncio (SVG a PNG con resvg, que la acción
+  instala al usarla; no es una dependencia del repo).
+- `fonts/`: Montserrat para el banner (licencia OFL, `fonts/OFL.txt`).
 - `emojis/`: los emojis de las plataformas que se suben al servidor de Discord.
 
-Node.js sin dependencias: los tests usan `node:test` (`npm test`).
+Node.js sin dependencias: los tests usan `node:test` (`npm test`; con
+`RESVG_DIR` apuntando a una instalación de `@resvg/resvg-js` también prueban
+el banner renderizado).
 
 ## Reglas
 

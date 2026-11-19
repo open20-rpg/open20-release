@@ -7,10 +7,14 @@
 //   finish    drops the status line once everything is ready.
 // Inputs come as environment variables (see the actions that call it):
 // DISCORD_BOT_TOKEN always; MESSAGE_FILE; for announce TAG, TITLE, NOTES_FILE,
-// RELEASE_URL, CHANNEL_ID, and optionally DOWNLOAD and STATUS; for react EMOJI.
+// RELEASE_URL, CHANNEL_ID, and optionally DOWNLOAD, STATUS and, for the banner
+// image, BANNER_BACKGROUND, BANNER_ICON and RESVG_DIR (where resvg is
+// installed); for react EMOJI.
 // Usage: node src/discord.mjs announce|react|finish
 import { readFileSync, writeFileSync } from "node:fs"
+import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
+import { bannerSvg, dataUrl, formatDate, renderBanner, summarize } from "./banner.mjs"
 
 // Discord rejects messages over 2000 characters.
 export const DISCORD_LIMIT = 2000
@@ -55,9 +59,11 @@ export function buildMessages({ tag, title, notes, releaseUrl, download = "", st
 async function discord(path, init, what) {
   const token = process.env.DISCORD_BOT_TOKEN
   if (!token) throw new Error("DISCORD_BOT_TOKEN is required")
+  // A FormData body sets its own multipart Content-Type.
+  const json = typeof init.body === "string" ? { "Content-Type": "application/json" } : {}
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bot ${token}`, ...json },
   })
   if (!response.ok) {
     throw new Error(`${what} failed: ${response.status} ${await response.text()}`)
@@ -76,19 +82,55 @@ function required(name) {
   return value
 }
 
-async function announce() {
+/** The banner PNG for this release, or null when the repo gives no images. */
+async function banner({ tag, title, notes }) {
+  const background = process.env.BANNER_BACKGROUND
+  const icon = process.env.BANNER_ICON
+  if (!background && !icon) return null
+  const resvg = createRequire(`${required("RESVG_DIR")}/`)("@resvg/resvg-js")
+  const svg = bannerSvg({
+    title,
+    version: tag,
+    date: formatDate(new Date()),
+    summary: summarize(notes),
+    background: background && dataUrl(background),
+    icon: icon && dataUrl(icon),
+  })
+  return renderBanner(svg, {
+    resvg,
+    fontsDir: fileURLToPath(new URL("../fonts", import.meta.url)),
+  })
+}
+
+export async function announce() {
+  const tag = required("TAG")
+  const title = required("TITLE")
+  const notes = readFileSync(required("NOTES_FILE"), "utf8")
   const { pending, final } = buildMessages({
-    tag: required("TAG"),
-    title: required("TITLE"),
-    notes: readFileSync(required("NOTES_FILE"), "utf8"),
+    tag,
+    title,
+    notes,
     releaseUrl: required("RELEASE_URL"),
     download: process.env.DOWNLOAD,
     status: process.env.STATUS,
   })
+  // A banner that fails to render must not hold back the announcement.
+  const image = await banner({ tag, title, notes }).catch((error) => {
+    console.log(`::warning::No banner: ${error.message}`)
+    return null
+  })
+  let message = body(pending)
+  if (image) {
+    // The image goes as an attachment, shown under the text. Editing the text
+    // later (finish) keeps it.
+    message = new FormData()
+    message.set("payload_json", body(pending))
+    message.set("files[0]", new Blob([image], { type: "image/png" }), "banner.png")
+  }
   const channelId = required("CHANNEL_ID")
   const sent = await discord(
     `/channels/${channelId}/messages`,
-    { method: "POST", body: body(pending) },
+    { method: "POST", body: message },
     "Send message",
   )
   writeFileSync(required("MESSAGE_FILE"), JSON.stringify({ channelId, messageId: sent.id, final }))

@@ -28,7 +28,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # resvg renders the Discord banner; with it the tests cover that too.
+      - run: npm install --prefix "$RUNNER_TEMP/resvg" --no-save --no-audit --no-fund @resvg/resvg-js@2.6.2
       - run: npm test
+        env:
+          RESVG_DIR: ${{ runner.temp }}/resvg
 
       - uses: ./release
         id: release

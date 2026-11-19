@@ -22,6 +22,18 @@ inputs:
       being prepared. Empty for an announcement that's final from the start.
     required: false
     default: ""
+  banner-background:
+    description: >
+      The app's own background for the banner image under the announcement
+      (PNG or JPEG, 3:1, e.g. 2400x800), a path in the checked-out repo. The
+      banner also shows the icon, the name and the release's version, date
+      and changes. Without background nor icon there's no banner.
+    required: false
+    default: ""
+  banner-icon:
+    description: The app's icon for the banner (PNG, JPEG or SVG), a path in the checked-out repo.
+    required: false
+    default: ""
   bot-token:
     description: The Open20 bot's token (secrets.DISCORD_BOT_TOKEN).
     required: true
@@ -46,6 +58,9 @@ runs:
         DOWNLOAD: ${{ inputs.download }}
         STATUS: ${{ inputs.status }}
         CHANNEL_ID: ${{ inputs.channel-id }}
+        BANNER_BACKGROUND: ${{ inputs.banner-background }}
+        BANNER_ICON: ${{ inputs.banner-icon }}
+        RESVG_DIR: ${{ runner.temp }}/resvg
         NOTES_FILE: ${{ runner.temp }}/release-notes.md
         MESSAGE_FILE: ${{ runner.temp }}/discord-message.json
       run: |
@@ -54,6 +69,11 @@ runs:
           exit 0
         fi
         gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json body --jq .body > "$NOTES_FILE"
+        if [ -n "$BANNER_BACKGROUND$BANNER_ICON" ]; then
+          # Renders the banner's SVG to PNG; prebuilt, so it installs in seconds.
+          npm install --prefix "$RUNNER_TEMP/resvg" --no-save --no-audit --no-fund @resvg/resvg-js@2.6.2 > /dev/null \
+            || echo "::warning::Couldn't install resvg: no banner"
+        fi
         export RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
         node "$GITHUB_ACTION_PATH/../src/discord.mjs" announce
         gh release upload "$TAG" "$MESSAGE_FILE" -R "$GITHUB_REPOSITORY" --clobber

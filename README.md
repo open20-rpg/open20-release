@@ -71,6 +71,8 @@ final se quita la línea de estado.
     title: Open20 Battle Maps
     download: https://open20.app/battle-maps
     status: "⏳ Las descargas se están preparando: cada plataforma suma su ✅ cuando está lista."
+    banner-background: .github/discord-banner.jpg
+    banner-icon: src/assets/brand/battle-maps-icon.svg
     bot-token: ${{ secrets.DISCORD_BOT_TOKEN }}
 
 # En cada build, cuando su descarga ya está en la release:
@@ -87,6 +89,12 @@ final se quita la línea de estado.
     bot-token: ${{ secrets.DISCORD_BOT_TOKEN }}
 ```
 
+- Con `banner-background` y `banner-icon` (rutas en el repo, que tiene que
+  estar con checkout) el anuncio lleva abajo una imagen de la versión: el fondo
+  propio de la app, su ícono, su nombre, la versión, la fecha y cuántos
+  cambios hay de cada tipo. El fondo es PNG o JPEG en 3:1 (2400×800); el
+  ícono, PNG, JPEG o SVG. La fuente es Montserrat (`fonts/`, licencia OFL).
+  Si el banner falla, el anuncio sale igual, sin imagen.
 - `DISCORD_BOT_TOKEN` es un secret de la organización. Sin él, las tres
   acciones no hacen nada.
 - El bot necesita, en el canal: ver el canal, enviar mensajes, leer el
