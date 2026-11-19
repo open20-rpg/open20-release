@@ -112,6 +112,11 @@ async function react() {
 
 async function finish() {
   const { channelId, messageId, final } = JSON.parse(readFileSync(required("MESSAGE_FILE"), "utf8"))
+  // Announcements from before open20-release don't keep their final text.
+  if (!final) {
+    console.log("This announcement has no final text: left as it is")
+    return
+  }
   await discord(
     `/channels/${channelId}/messages/${messageId}`,
     { method: "PATCH", body: body(final) },
