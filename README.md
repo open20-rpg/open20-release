@@ -97,8 +97,9 @@ final se quita la línea de estado.
   Si el banner falla, el anuncio sale igual, sin imagen.
 - `DISCORD_BOT_TOKEN` es un secret de la organización. Sin él, las tres
   acciones no hacen nada.
-- El bot necesita, en el canal: ver el canal, enviar mensajes, leer el
-  historial y agregar reacciones.
+- El bot necesita, en el canal: ver el canal, enviar mensajes, adjuntar
+  archivos (el banner), leer el historial y agregar reacciones. Sin permiso
+  para adjuntar, el anuncio sale sin banner.
 - Los emojis se buscan por nombre en el servidor. Los de las plataformas están
   en [`emojis/`](emojis): `windows_ready`, `macos_silicon_ready`,
   `macos_intel_ready`, `linux_ready` y `android_ready`. Nivel21 usa

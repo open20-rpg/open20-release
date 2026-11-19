@@ -103,3 +103,38 @@ test("announces with the banner as an attachment, and saves the final text", asy
     assert.deepEqual([...png.slice(0, 4)], [0x89, 0x50, 0x4e, 0x47])
   }
 })
+
+test("without permission to attach files, announces without the banner", async () => {
+  if (!process.env.RESVG_DIR) return
+  const { mkdtempSync, writeFileSync } = await import("node:fs")
+  const { tmpdir } = await import("node:os")
+  const { join } = await import("node:path")
+  const { announce } = await import("./discord.mjs")
+  const dir = mkdtempSync(join(tmpdir(), "announce-"))
+  writeFileSync(join(dir, "notes.md"), NOTES)
+  writeFileSync(
+    join(dir, "icon.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>',
+  )
+  Object.assign(process.env, {
+    NOTES_FILE: join(dir, "notes.md"),
+    MESSAGE_FILE: join(dir, "message.json"),
+    BANNER_ICON: join(dir, "icon.svg"),
+  })
+  const sent = []
+  const realFetch = globalThis.fetch
+  globalThis.fetch = async (url, init) => {
+    sent.push(init.body)
+    return init.body instanceof FormData
+      ? new Response('{"message": "Missing Permissions", "code": 50013}', { status: 403 })
+      : new Response(JSON.stringify({ id: "789" }), { status: 200 })
+  }
+  try {
+    await announce()
+  } finally {
+    globalThis.fetch = realFetch
+  }
+  assert.equal(sent.length, 2)
+  assert.ok(sent[0] instanceof FormData)
+  assert.equal(typeof sent[1], "string")
+})

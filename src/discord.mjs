@@ -119,20 +119,24 @@ export async function announce() {
     console.log(`::warning::No banner: ${error.message}`)
     return null
   })
-  let message = body(pending)
+  const channelId = required("CHANNEL_ID")
+  const send = (message) =>
+    discord(`/channels/${channelId}/messages`, { method: "POST", body: message }, "Send message")
+  let sent
   if (image) {
     // The image goes as an attachment, shown under the text. Editing the text
     // later (finish) keeps it.
-    message = new FormData()
+    const message = new FormData()
     message.set("payload_json", body(pending))
     message.set("files[0]", new Blob([image], { type: "image/png" }), "banner.png")
+    // Attaching needs its own permission ("Attach Files"): without it, or if
+    // Discord rejects the file, the announcement goes out without the banner.
+    sent = await send(message).catch((error) => {
+      console.log(`::warning::Sent without the banner: ${error.message}`)
+      return null
+    })
   }
-  const channelId = required("CHANNEL_ID")
-  const sent = await discord(
-    `/channels/${channelId}/messages`,
-    { method: "POST", body: message },
-    "Send message",
-  )
+  sent ??= await send(body(pending))
   writeFileSync(required("MESSAGE_FILE"), JSON.stringify({ channelId, messageId: sent.id, final }))
   console.log(`Announced ${process.env.TAG}`)
 }
