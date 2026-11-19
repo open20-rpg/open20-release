@@ -70,7 +70,7 @@ final se quita la línea de estado.
     tag: ${{ steps.release.outputs.tag }}
     title: Open20 Battle Maps
     download: https://open20.app/battle-maps
-    status: "⏳ Las descargas se están preparando: cada plataforma suma su ✅ cuando está lista."
+    status: "⏳ Preparando las descargas, puede tardar unos minutos."
     banner-background: .github/discord-banner.jpg
     banner-icon: src/assets/brand/battle-maps-icon.svg
     bot-token: ${{ secrets.DISCORD_BOT_TOKEN }}
