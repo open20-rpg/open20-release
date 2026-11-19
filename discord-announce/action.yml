@@ -1,0 +1,59 @@
+name: Open20 Discord announcement
+description: >
+  Announces a release on the Open20 Discord with the Open20 bot, from the
+  release's notes. The message ids are attached to the release
+  (discord-message.json), for discord-react and discord-finish. Without a bot
+  token it does nothing.
+
+inputs:
+  tag:
+    description: The release tag (e.g. v1.2.3).
+    required: true
+  title:
+    description: The app's name, as in "¡Nueva versión v1.2.3 de <title>!".
+    required: true
+  download:
+    description: Where to download it, shown as "Descargar".
+    required: false
+    default: ""
+  status:
+    description: >
+      A line shown until discord-finish drops it, e.g. while the downloads are
+      being prepared. Empty for an announcement that's final from the start.
+    required: false
+    default: ""
+  bot-token:
+    description: The Open20 bot's token (secrets.DISCORD_BOT_TOKEN).
+    required: true
+  channel-id:
+    description: The channel to announce in.
+    required: false
+    default: "1468538217010561044" # #anuncios on the Open20 server
+  github-token:
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: announce on Discord
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        DISCORD_BOT_TOKEN: ${{ inputs.bot-token }}
+        TAG: ${{ inputs.tag }}
+        TITLE: ${{ inputs.title }}
+        DOWNLOAD: ${{ inputs.download }}
+        STATUS: ${{ inputs.status }}
+        CHANNEL_ID: ${{ inputs.channel-id }}
+        NOTES_FILE: ${{ runner.temp }}/release-notes.md
+        MESSAGE_FILE: ${{ runner.temp }}/discord-message.json
+      run: |
+        if [ -z "$DISCORD_BOT_TOKEN" ]; then
+          echo "::notice::No Discord bot token: $TAG is not announced"
+          exit 0
+        fi
+        gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json body --jq .body > "$NOTES_FILE"
+        export RELEASE_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"
+        node "$GITHUB_ACTION_PATH/../src/discord.mjs" announce
+        gh release upload "$TAG" "$MESSAGE_FILE" -R "$GITHUB_REPOSITORY" --clobber

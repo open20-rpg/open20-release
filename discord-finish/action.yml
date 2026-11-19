@@ -1,0 +1,37 @@
+name: Open20 Discord announcement finished
+description: >
+  Drops the status line from a release's Discord announcement, once
+  everything it was waiting for is ready. Without an announcement or a bot
+  token it does nothing.
+
+inputs:
+  tag:
+    description: The release tag (e.g. v1.2.3).
+    required: true
+  bot-token:
+    description: The Open20 bot's token (secrets.DISCORD_BOT_TOKEN).
+    required: true
+  github-token:
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: finish the Discord announcement
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        DISCORD_BOT_TOKEN: ${{ inputs.bot-token }}
+        TAG: ${{ inputs.tag }}
+        MESSAGE_DIR: ${{ runner.temp }}/discord-finish
+      run: |
+        if [ -z "$DISCORD_BOT_TOKEN" ]; then
+          echo "::notice::No Discord bot token: nothing to finish"
+          exit 0
+        fi
+        if ! gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p discord-message.json -D "$MESSAGE_DIR" --clobber; then
+          echo "::notice::$TAG has no Discord announcement"
+          exit 0
+        fi
+        MESSAGE_FILE="$MESSAGE_DIR/discord-message.json" node "$GITHUB_ACTION_PATH/../src/discord.mjs" finish

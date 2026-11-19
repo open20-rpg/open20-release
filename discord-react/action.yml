@@ -1,0 +1,43 @@
+name: Open20 Discord reaction
+description: >
+  Reacts to a release's Discord announcement with an emoji of the Open20
+  server, found by its name (e.g. windows_ready), once a download or a store
+  is ready. It never fails the job: a missing announcement, token or emoji is
+  only a warning.
+
+inputs:
+  tag:
+    description: The release tag (e.g. v1.2.3).
+    required: true
+  emoji:
+    description: The emoji's name on the server.
+    required: true
+  bot-token:
+    description: The Open20 bot's token (secrets.DISCORD_BOT_TOKEN).
+    required: true
+  github-token:
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: react on Discord
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        DISCORD_BOT_TOKEN: ${{ inputs.bot-token }}
+        TAG: ${{ inputs.tag }}
+        EMOJI: ${{ inputs.emoji }}
+        MESSAGE_DIR: ${{ runner.temp }}/discord-react
+      run: |
+        if [ -z "$DISCORD_BOT_TOKEN" ]; then
+          echo "::notice::No Discord bot token: no $EMOJI reaction"
+          exit 0
+        fi
+        if ! gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p discord-message.json -D "$MESSAGE_DIR" --clobber; then
+          echo "::warning::$TAG has no Discord announcement to react to"
+          exit 0
+        fi
+        MESSAGE_FILE="$MESSAGE_DIR/discord-message.json" node "$GITHUB_ACTION_PATH/../src/discord.mjs" react \
+          || echo "::warning::Couldn't react with $EMOJI"

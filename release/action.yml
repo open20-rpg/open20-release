@@ -1,0 +1,73 @@
+name: Open20 release
+description: >
+  Releases the repo with semantic-release from its Conventional Commits, with
+  the rules and notes shared by every Open20 repo: version, release commit,
+  tag and GitHub Release. Needs a checkout with fetch-depth 0 and Node.js.
+
+inputs:
+  prepare:
+    description: >
+      Command run before the release commit, e.g. to write the new version
+      into the repo's files. ${nextRelease.version} is the new version.
+    required: false
+    default: ""
+  commit-assets:
+    description: Files changed by `prepare`, committed with the release (one per line).
+    required: false
+    default: ""
+  release-assets:
+    description: >
+      Files attached to the GitHub Release (one per line, globs allowed).
+      "path # label" gives a file a label.
+    required: false
+    default: ""
+  npm:
+    description: '"true" also writes the version into package.json and package-lock.json.'
+    required: false
+    default: "false"
+  github-token:
+    description: Token to push the release commit and create the release.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  version:
+    description: The released version (e.g. 1.2.3), empty when nothing was released.
+    value: ${{ steps.semrel.outputs.version }}
+  tag:
+    description: The released tag (e.g. v1.2.3), empty when nothing was released.
+    value: ${{ steps.semrel.outputs.tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: semantic-release config
+      shell: bash
+      env:
+        PREPARE: ${{ inputs.prepare }}
+        COMMIT_ASSETS: ${{ inputs.commit-assets }}
+        RELEASE_ASSETS: ${{ inputs.release-assets }}
+        NPM: ${{ inputs.npm }}
+      # Written where semantic-release looks for it (it isn't committed): with
+      # --extends it would look for its plugins next to the file instead.
+      run: |
+        if [ -e .releaserc.json ]; then
+          echo "::error::Remove .releaserc.json: the release config comes from open20-release"
+          exit 1
+        fi
+        node "$GITHUB_ACTION_PATH/../src/release-config.mjs" > .releaserc.json
+
+    # Pinned versions through npx: the repos don't need semantic-release as a
+    # dependency (it bundles its own npm, whose dependencies trip npm audit).
+    - name: semantic-release
+      id: semrel
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      run: >
+        npx --yes
+        -p semantic-release@25.0.9
+        -p @semantic-release/exec@7.1.0
+        -p @semantic-release/git@11.0.1
+        -p conventional-changelog-conventionalcommits@9.3.1
+        semantic-release
